@@ -321,8 +321,15 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     }
 
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
+    /**
+     * 生成接口代理
+     * @param map 接口配置
+     */
     private T createProxy(Map<String, String> map) {
         URL tmpUrl = new URL("temp", "localhost", 0, map);
+        /**
+         * 如果是InJVM，则使用InJVM协议
+         */
         final boolean isJvmRefer;
         if (isInjvm() == null) {
             if (url != null && url.length() > 0) { // if a url is specified, don't do local reference
@@ -335,6 +342,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             isJvmRefer = isInjvm();
         }
 
+        /**
+         * 使用InJVM协议创建Invoker
+         */
         if (isJvmRefer) {
             URL url = new URL(Constants.LOCAL_PROTOCOL, Constants.LOCALHOST_VALUE, 0, interfaceClass.getName()).addParameters(map);
             invoker = refprotocol.refer(interfaceClass, url);
@@ -342,6 +352,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
         } else {
+            /**
+             * 如果有配置地址，则可能是直连地址或者注册中心地址
+             */
             if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = Constants.SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
@@ -358,6 +371,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                     }
                 }
             } else { // assemble URL from register center's configuration
+                /**
+                 * 加载注册中心
+                 */
                 checkRegistry();
                 List<URL> us = loadRegistries(false);
                 if (CollectionUtils.isNotEmpty(us)) {
@@ -374,17 +390,26 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             }
 
+            /**
+             * 只有一个地址的时候，直接引用
+             */
             if (urls.size() == 1) {
                 invoker = refprotocol.refer(interfaceClass, urls.get(0));
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
                 URL registryURL = null;
+                /**
+                 * 多个URL,分别从每个协议引用
+                 */
                 for (URL url : urls) {
                     invokers.add(refprotocol.refer(interfaceClass, url));
                     if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
                         registryURL = url; // use last registry url
                     }
                 }
+                /**
+                 * 将多个invoker伪装成一个Invoker
+                 */
                 if (registryURL != null) { // registry url is available
                     // use RegistryAwareCluster only when register's cluster is available
                     URL u = registryURL.addParameter(Constants.CLUSTER_KEY, RegistryAwareCluster.NAME);
@@ -403,6 +428,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         if (c == null) {
             c = true; // default true
         }
+        /**
+         * 提供者检查
+         */
         if (c && !invoker.isAvailable()) {
             // make it possible for consumer to retry later if provider is temporarily unavailable
             initialized = false;
@@ -421,6 +449,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             metadataReportService.publishConsumer(consumerURL);
         }
         // create service proxy
+        /**
+         * 创建代理
+         */
         return (T) proxyFactory.getProxy(invoker);
     }
 

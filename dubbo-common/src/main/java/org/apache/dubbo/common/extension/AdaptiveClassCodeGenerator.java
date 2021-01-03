@@ -135,6 +135,8 @@ public class AdaptiveClassCodeGenerator {
     }
     
     /**
+     * 找到URL对应的参数序号
+     *
      * get index of parameter with type URL
      */
     private int getUrlTypeIndex(Method method) {            

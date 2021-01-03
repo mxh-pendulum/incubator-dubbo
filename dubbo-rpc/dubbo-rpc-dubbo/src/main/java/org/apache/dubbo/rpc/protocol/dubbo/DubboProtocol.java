@@ -86,6 +86,10 @@ public class DubboProtocol extends AbstractProtocol {
      */
     private final ConcurrentMap<String, String> stubServiceMethodsMap = new ConcurrentHashMap<>();
 
+    /**
+     * MultiMessageHandler -> HeartbeatHandler -> AllDispatcher (线程池)-> DecodeHandler ->  HeaderExchangeHandler -> requestHandler
+     * 请求最终的处理器
+     */
     private ExchangeHandler requestHandler = new ExchangeHandlerAdapter() {
 
         @Override
@@ -98,6 +102,10 @@ public class DubboProtocol extends AbstractProtocol {
             }
 
             Invocation inv = (Invocation) message;
+            /**
+             * Invoker(org.apache.dubbo.registry.integration.RegistryProtocol.InvokerDelegate) -> Wrapper-> ServiceImpl
+             * 找到包装了服务实现的Invoker
+             */
             Invoker<?> invoker = getInvoker(channel, inv);
             // need to consider backward-compatibility if it's a callback
             if (Boolean.TRUE.toString().equals(inv.getAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
@@ -124,6 +132,9 @@ public class DubboProtocol extends AbstractProtocol {
             }
             RpcContext rpcContext = RpcContext.getContext();
             rpcContext.setRemoteAddress(channel.getRemoteAddress());
+            /**
+             * 调用对象
+             */
             Result result = invoker.invoke(inv);
 
             if (result instanceof AsyncRpcResult) {
@@ -265,7 +276,13 @@ public class DubboProtocol extends AbstractProtocol {
 
         // export service.
         String key = serviceKey(url);
+        /**
+         * Invoker转换为Exporter
+         */
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
+        /**
+         * 缓存Exporter调用的时候从中找出来调用到实现类
+         */
         exporterMap.put(key, exporter);
 
         //export an stub service for dispatching event
@@ -284,6 +301,9 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        /**
+         * 打开nettyServer同一个JVM实例同种协议的不同服务之间只会开启一个NettyServer
+         */
         openServer(url);
         optimizeSerialization(url);
 
@@ -292,8 +312,14 @@ public class DubboProtocol extends AbstractProtocol {
 
     private void openServer(URL url) {
         // find server.
+        /**
+         * 提供者地址
+         */
         String key = url.getAddress();
         //client can export a service which's only for server to invoke
+        /**
+         * 是否是服务提供者
+         */
         boolean isServer = url.getParameter(Constants.IS_SERVER_KEY, true);
         if (isServer) {
             ExchangeServer server = serverMap.get(key);
@@ -383,29 +409,50 @@ public class DubboProtocol extends AbstractProtocol {
         optimizeSerialization(url);
 
         // create rpc invoker.
+        /**
+         * 创建Invoker
+         */
         DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
         invokers.add(invoker);
 
         return invoker;
     }
 
+    /**
+     * 初始化Netty客户端
+     *
+     * @param url 提供者url
+     * @return client
+     */
     private ExchangeClient[] getClients(URL url) {
         // whether to share connection
 
+        /**
+         * 是否共享连接
+         */
         boolean useShareConnect = false;
 
         int connections = url.getParameter(Constants.CONNECTIONS_KEY, 0);
         List<ReferenceCountExchangeClient> shareClients = null;
         // if not configured, connection is shared, otherwise, one connection for one service
+        /**
+         * 如果没配置则共享连接，否则每个服务单独一个连接
+         */
         if (connections == 0) {
             useShareConnect = true;
 
             /**
              * The xml configuration should have a higher priority than properties.
              */
+            /**
+             * 共享连接需要多少条，默认1条
+             */
             String shareConnectionsStr = url.getParameter(Constants.SHARE_CONNECTIONS_KEY, (String) null);
             connections = Integer.parseInt(StringUtils.isBlank(shareConnectionsStr) ? ConfigUtils.getProperty(Constants.SHARE_CONNECTIONS_KEY,
                     Constants.DEFAULT_SHARE_CONNECTIONS) : shareConnectionsStr);
+            /**
+             * 获取共享客户端
+             */
             shareClients = getSharedClient(url, connections);
         }
 
@@ -413,8 +460,10 @@ public class DubboProtocol extends AbstractProtocol {
         for (int i = 0; i < clients.length; i++) {
             if (useShareConnect) {
                 clients[i] = shareClients.get(i);
-
             } else {
+                /**
+                 * 非共享每次创建一个新的连接
+                 */
                 clients[i] = initClient(url);
             }
         }
@@ -567,10 +616,16 @@ public class DubboProtocol extends AbstractProtocol {
         ExchangeClient client;
         try {
             // connection should be lazy
+            /**
+             * 是否延迟初始化
+             */
             if (url.getParameter(Constants.LAZY_CONNECT_KEY, false)) {
                 client = new LazyConnectExchangeClient(url, requestHandler);
 
             } else {
+                /**
+                 * 初始化客户端
+                 */
                 client = Exchangers.connect(url, requestHandler);
             }
 

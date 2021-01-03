@@ -155,6 +155,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         listeners = zkListeners.get(url);
                     }
                     ChildListener zkListener = listeners.get(listener);
+                    /**
+                     * 保存监听，并将NotifyListener适配成zk的ChildListener，在注册中心发生变更时发起通知
+                     */
                     if (zkListener == null) {
                         listeners.putIfAbsent(listener, (parentPath, currentChilds) -> ZookeeperRegistry.this.notify(url, listener, toUrlsWithEmpty(url, parentPath, currentChilds)));
                         zkListener = listeners.get(listener);
@@ -165,6 +168,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
+                /**
+                 * 通知监听
+                 */
                 notify(url, listener, urls);
             }
         } catch (Throwable e) {

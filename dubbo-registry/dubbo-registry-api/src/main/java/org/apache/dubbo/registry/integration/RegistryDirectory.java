@@ -81,6 +81,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     private final String serviceKey; // Initialization at construction time, assertion not null
     private final Class<T> serviceType; // Initialization at construction time, assertion not null
+    /**
+     * 服务引用的参数
+     */
     private final Map<String, String> queryMap; // Initialization at construction time, assertion not null
     private final URL directoryUrl; // Initialization at construction time, assertion not null, and always assign non null value
     private final boolean multiGroup;
@@ -151,6 +154,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         setConsumerUrl(url);
         consumerConfigurationListener.addNotifyListener(this);
         serviceConfigurationListener = new ReferenceConfigurationListener(this, url);
+        /**
+         * 订阅服务，监听为当前类的org.apache.dubbo.registry.integration.RegistryDirectory#notify(java.util.List)方法
+         */
         registry.subscribe(url, this);
     }
 
@@ -187,8 +193,16 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         }
     }
 
+    /**
+     * 处理注册中心变更事件
+     *
+     * @param urls The list of registered information , is always not empty. The meaning is the same as the return value of {@link org.apache.dubbo.registry.RegistryService#lookup(URL)}.
+     */
     @Override
     public synchronized void notify(List<URL> urls) {
+        /**
+         * 对数据进行分类
+         */
         Map<String, List<URL>> categoryUrls = urls.stream()
                 .filter(Objects::nonNull)
                 .filter(this::isValidCategory)
@@ -204,24 +218,49 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     return "";
                 }));
 
+        /**
+         * 配置信息，比如服务降级信息
+         */
         List<URL> configuratorURLs = categoryUrls.getOrDefault(CONFIGURATORS_CATEGORY, Collections.emptyList());
         this.configurators = Configurator.toConfigurators(configuratorURLs).orElse(this.configurators);
 
+        /**
+         * 路由信息
+         */
         List<URL> routerURLs = categoryUrls.getOrDefault(ROUTERS_CATEGORY, Collections.emptyList());
         toRouters(routerURLs).ifPresent(this::addRouters);
 
         // providers
+        /**
+         * 提供者信息
+         */
         List<URL> providerURLs = categoryUrls.getOrDefault(PROVIDERS_CATEGORY, Collections.emptyList());
+        /**
+         * 刷新本地Invoker列表
+         */
         refreshOverrideAndInvoker(providerURLs);
     }
 
+    /**
+     * 刷新Invoker列表
+     *
+     * @param urls 提供者地址
+     */
     private void refreshOverrideAndInvoker(List<URL> urls) {
         // mock zookeeper://xxx?mock=return null
+        /**
+         * 按照服务降级策略重写url
+         */
         overrideDirectoryUrl();
+        /**
+         * 刷新Invoker列表
+         */
         refreshInvoker(urls);
     }
 
     /**
+     * 将URL转换成Invoker
+     *
      * Convert the invokerURL list to the Invoker Map. The rules of the conversion are as follows:
      * <ol>
      * <li> If URL has been converted to invoker, it is no longer re-referenced and obtained directly from the cache,
@@ -237,6 +276,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     private void refreshInvoker(List<URL> invokerUrls) {
         Assert.notNull(invokerUrls, "invokerUrls should not be null");
 
+        /**
+         * 清空
+         */
         if (invokerUrls.size() == 1
                 && invokerUrls.get(0) != null
                 && Constants.EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
@@ -245,6 +287,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             routerChain.setInvokers(this.invokers);
             destroyAllInvokers(); // Close all invokers
         } else {
+            /**
+             * 替换旧的Invoker
+             */
             this.forbidden = false; // Allow to access
             Map<String, Invoker<T>> oldUrlInvokerMap = this.urlInvokerMap; // local reference
             if (invokerUrls == Collections.<URL>emptyList()) {
@@ -259,6 +304,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokerUrls.isEmpty()) {
                 return;
             }
+            /**
+             * 将URL转换从Invoker
+             */
             Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
 
             /**
@@ -282,6 +330,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             this.invokers = multiGroup ? toMergeInvokerList(newInvokers) : newInvokers;
             this.urlInvokerMap = newUrlInvokerMap;
 
+            /**
+             * 销毁过期的Invoker
+             */
             try {
                 destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap); // Close the unused Invoker
             } catch (Exception e) {
@@ -402,6 +453,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                         enabled = url.getParameter(Constants.ENABLED_KEY, true);
                     }
                     if (enabled) {
+                        /**
+                         * 连接提供者，并将URL转换为Invoker
+                         */
                         invoker = new InvokerDelegate<>(protocol.refer(serviceType, url), url, providerUrl);
                     }
                 } catch (Throwable t) {

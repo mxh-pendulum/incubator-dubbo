@@ -1,0 +1,2 @@
+Huawei=org.apache.dubbo.impl.Huawei
+IPhone=org.apache.dubbo.impl.IPhone

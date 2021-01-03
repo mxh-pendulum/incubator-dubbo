@@ -59,7 +59,13 @@ public class NettyClient extends AbstractClient {
 
     @Override
     protected void doOpen() throws Throwable {
+        /**
+         * 创建业务handler
+         */
         final NettyClientHandler nettyClientHandler = new NettyClientHandler(getUrl(), this);
+        /**
+         * 创建启动器并配置
+         */
         bootstrap = new Bootstrap();
         bootstrap.group(nioEventLoopGroup)
                 .option(ChannelOption.SO_KEEPALIVE, true)
@@ -74,6 +80,9 @@ public class NettyClient extends AbstractClient {
             bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, getConnectTimeout());
         }
 
+        /**
+         * 添加Handler到管线
+         */
         bootstrap.handler(new ChannelInitializer() {
 
             @Override
@@ -81,10 +90,10 @@ public class NettyClient extends AbstractClient {
                 int heartbeatInterval = UrlUtils.getIdleTimeout(getUrl());
                 NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyClient.this);
                 ch.pipeline()//.addLast("logging",new LoggingHandler(LogLevel.INFO))//for debug
-                        .addLast("decoder", adapter.getDecoder())
-                        .addLast("encoder", adapter.getEncoder())
-                        .addLast("client-idle-handler", new IdleStateHandler(heartbeatInterval, 0, 0, MILLISECONDS))
-                        .addLast("handler", nettyClientHandler);
+                        .addLast("decoder", adapter.getDecoder()) //解码器
+                        .addLast("encoder", adapter.getEncoder()) //编码器
+                        .addLast("client-idle-handler", new IdleStateHandler(heartbeatInterval, 0, 0, MILLISECONDS)) //心跳检查
+                        .addLast("handler", nettyClientHandler); //业务处理器
             }
         });
     }
@@ -92,6 +101,9 @@ public class NettyClient extends AbstractClient {
     @Override
     protected void doConnect() throws Throwable {
         long start = System.currentTimeMillis();
+        /**
+         * 连接提供者
+         */
         ChannelFuture future = bootstrap.connect(getConnectAddress());
         try {
             boolean ret = future.awaitUninterruptibly(getConnectTimeout(), MILLISECONDS);

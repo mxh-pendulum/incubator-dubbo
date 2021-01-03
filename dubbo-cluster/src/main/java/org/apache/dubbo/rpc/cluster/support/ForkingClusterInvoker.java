@@ -36,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
+ * 并发调用莫斯
+ *
  * Invoke a specific number of invokers concurrently, usually used for demanding real-time operations, but need to waste more service resources.
  *
  * <a href="http://en.wikipedia.org/wiki/Fork_(topology)">Fork</a>
@@ -59,7 +61,13 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
         try {
             checkInvokers(invokers, invocation);
             final List<Invoker<T>> selected;
+            /**
+             * 并发数
+             */
             final int forks = getUrl().getParameter(Constants.FORKS_KEY, Constants.DEFAULT_FORKS);
+            /**
+             * 超时时间
+             */
             final int timeout = getUrl().getParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
             if (forks <= 0 || forks >= invokers.size()) {
                 selected = invokers;
@@ -85,6 +93,9 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
                             Result result = invoker.invoke(invocation);
                             ref.offer(result);
                         } catch (Throwable e) {
+                            /**
+                             * 所有的都调用失败时记录失败信息
+                             */
                             int value = count.incrementAndGet();
                             if (value >= selected.size()) {
                                 ref.offer(e);
@@ -95,6 +106,9 @@ public class ForkingClusterInvoker<T> extends AbstractClusterInvoker<T> {
             }
             try {
                 Object ret = ref.poll(timeout, TimeUnit.MILLISECONDS);
+                /**
+                 * 如果全部失败则抛出异常
+                 */
                 if (ret instanceof Throwable) {
                     Throwable e = (Throwable) ret;
                     throw new RpcException(e instanceof RpcException ? ((RpcException) e).getCode() : 0, "Failed to forking invoke provider " + selected + ", but no luck to perform the invocation. Last error is: " + e.getMessage(), e.getCause() != null ? e.getCause() : e);

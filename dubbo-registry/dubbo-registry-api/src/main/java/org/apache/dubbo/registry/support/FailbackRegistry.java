@@ -60,6 +60,9 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     private final int retryPeriod;
 
     // Timer for failure retry, regular check if there is a request for failure, and if there is, an unlimited retry
+    /**
+     * 失败重试定时任务
+     */
     private final HashedWheelTimer retryTimer;
 
     public FailbackRegistry(URL url) {
@@ -133,6 +136,12 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         }
     }
 
+    /**
+     * 启动延时重试任务
+     *
+     * @param url url
+     * @param listener 监听
+     */
     private void addFailedSubscribed(URL url, NotifyListener listener) {
         Holder h = new Holder(url, listener);
         FailedSubscribedTask oldOne = failedSubscribed.get(h);
@@ -286,11 +295,16 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         super.subscribe(url, listener);
         removeFailedSubscribed(url, listener);
         try {
+            /**
+             * 订阅服务
+             */
             // Sending a subscription request to the server side
             doSubscribe(url, listener);
         } catch (Exception e) {
             Throwable t = e;
-
+            /**
+             * 订阅失败尝试使用缓存
+             */
             List<URL> urls = getCacheUrls(url);
             if (CollectionUtils.isNotEmpty(urls)) {
                 notify(url, listener, urls);

@@ -322,6 +322,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     public synchronized void export() {
+        /**
+         * 配置检查
+         */
         checkAndUpdateSubConfigs();
 
         if (provider != null) {
@@ -335,10 +338,15 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (export != null && !export) {
             return;
         }
-
+        /**
+         * 延迟暴露
+         */
         if (delay != null && delay > 0) {
             delayExportExecutor.schedule(this::doExport, delay, TimeUnit.MILLISECONDS);
         } else {
+            /**
+             * 立即暴露
+             */
             doExport();
         }
     }
@@ -395,13 +403,22 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        /**
+         * 加载所有注册中心
+         */
         List<URL> registryURLs = loadRegistries(true);
         for (ProtocolConfig protocolConfig : protocols) {
+            /**
+             * 每个注册中心注册一次
+             */
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+        /**
+         * 解析MethodConfig
+         */
         String name = protocolConfig.getName();
         if (StringUtils.isEmpty(name)) {
             name = Constants.DUBBO;
@@ -471,10 +488,16 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             } // end of methods for
         }
 
+        /**
+         * 如果为泛型调用，设置泛型参数
+         */
         if (ProtocolUtils.isGeneric(generic)) {
             map.put(Constants.GENERIC_KEY, generic);
             map.put(Constants.METHODS_KEY, Constants.ANY_VALUE);
         } else {
+            /**
+             * 正常调用设置拼接URL的参数
+             */
             String revision = Version.getVersion(interfaceClass, version);
             if (revision != null && revision.length() > 0) {
                 map.put("revision", revision);
@@ -501,6 +524,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             contextPath = provider.getContextpath();
         }
 
+        /**
+         * 拼接URL
+         */
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, (StringUtils.isEmpty(contextPath) ? "" : contextPath + "/") + path, map);
@@ -511,19 +537,32 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
 
+        /**
+         * 导出服务，本地导出、远程导出
+         */
         String scope = url.getParameter(Constants.SCOPE_KEY);
-        // don't export when none is configured
+        /**
+         * 如果Scope为SCOPE_NONE则不到处服务
+         */
         if (!Constants.SCOPE_NONE.equalsIgnoreCase(scope)) {
 
-            // export to local if the config is not remote (export to remote only when config is remote)
+            /**
+             * 如果Scope不是SCOPE_REMOTE，则导出本地服务
+             */
             if (!Constants.SCOPE_REMOTE.equalsIgnoreCase(scope)) {
                 exportLocal(url);
             }
-            // export to remote if the config is not local (export to local only when config is local)
+            /**
+             * 如果scope不是SCOPE_LOCAL则导出远程服务
+             */
             if (!Constants.SCOPE_LOCAL.equalsIgnoreCase(scope)) {
                 if (logger.isInfoEnabled()) {
                     logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                 }
+
+                /**
+                 * 如果有服务注册中心地址，注册到注册中心
+                 */
                 if (CollectionUtils.isNotEmpty(registryURLs)) {
                     for (URL registryURL : registryURLs) {
                         url = url.addParameterIfAbsent(Constants.DYNAMIC_KEY, registryURL.getParameter(Constants.DYNAMIC_KEY));
@@ -548,6 +587,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         exporters.add(exporter);
                     }
                 } else {
+                    /**
+                     * P2P模式
+                     */
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
                     DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
@@ -557,6 +599,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 /**
                  * @since 2.7.0
                  * ServiceData Store
+                 * 元数据存储
                  */
                 MetadataReportService metadataReportService = null;
                 if ((metadataReportService = getMetadataReportService()) != null) {

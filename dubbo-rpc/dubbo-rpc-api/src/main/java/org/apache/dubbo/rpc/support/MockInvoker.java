@@ -166,10 +166,16 @@ final public class MockInvoker<T> implements Invoker<T> {
 
     @SuppressWarnings("unchecked")
     public static Object getMockObject(String mockService, Class serviceType) {
+        /**
+         * 如果是true或者default
+         */
         if (ConfigUtils.isDefault(mockService)) {
             mockService = serviceType.getName() + "Mock";
         }
 
+        /**
+         * 找到本地实现类
+         */
         Class<?> mockClass = ReflectUtils.forName(mockService);
         if (!serviceType.isAssignableFrom(mockClass)) {
             throw new IllegalStateException("The mock class " + mockClass.getName() +
@@ -187,6 +193,8 @@ final public class MockInvoker<T> implements Invoker<T> {
 
 
     /**
+     * 常用mock方式
+     *
      * Normalize mock string:
      *
      * <ol>

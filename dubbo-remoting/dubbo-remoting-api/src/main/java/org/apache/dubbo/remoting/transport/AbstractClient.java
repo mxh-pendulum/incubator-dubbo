@@ -48,11 +48,17 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
     protected volatile ExecutorService executor;
 
     public AbstractClient(URL url, ChannelHandler handler) throws RemotingException {
+        /**
+         * 加载解码器
+         */
         super(url, handler);
 
         needReconnect = url.getParameter(Constants.SEND_RECONNECT_KEY, false);
 
         try {
+            /**
+             * 调用子类的doOpen
+             */
             doOpen();
         } catch (Throwable t) {
             close();
@@ -62,6 +68,9 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
         }
         try {
             // connect.
+            /**
+             * 连接提供方
+             */
             connect();
             if (logger.isInfoEnabled()) {
                 logger.info("Start " + getClass().getSimpleName() + " " + NetUtils.getLocalAddress() + " connect to the server " + getRemoteAddress());
@@ -87,6 +96,13 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                 .getDefaultExtension().remove(Constants.CONSUMER_SIDE, Integer.toString(url.getPort()));
     }
 
+    /**
+     * 消费端线程池模型
+     *
+     * @param url url
+     * @param handler 处理器
+     * @return ChannelHandler
+     */
     protected static ChannelHandler wrapChannelHandler(URL url, ChannelHandler handler) {
         url = ExecutorUtil.setThreadName(url, CLIENT_THREAD_POOL_NAME);
         url = url.addParameterIfAbsent(Constants.THREADPOOL_KEY, Constants.DEFAULT_CLIENT_THREADPOOL);

@@ -78,6 +78,9 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
     }
 
     void handleRequest(final ExchangeChannel channel, Request req) throws RemotingException {
+        /**
+         * 响应对象
+         */
         Response res = new Response(req.getId(), req.getVersion());
         if (req.isBroken()) {
             Object data = req.getData();
@@ -97,13 +100,22 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
             return;
         }
         // find handler by message class.
+        /**
+         * 请求载荷
+         */
         Object msg = req.getData();
         try {
             // handle data.
+            /**
+             * 调用DubboProtocol的requestHandler
+             */
             CompletableFuture<Object> future = handler.reply(channel, msg);
             if (future.isDone()) {
                 res.setStatus(Response.OK);
                 res.setResult(future.get());
+                /**
+                 * 写回结果
+                 */
                 channel.send(res);
                 return;
             }
@@ -116,6 +128,9 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
                         res.setStatus(Response.SERVICE_ERROR);
                         res.setErrorMessage(StringUtils.toString(t));
                     }
+                    /**
+                     * 写回结果
+                     */
                     channel.send(res);
                 } catch (RemotingException e) {
                     logger.warn("Send result to consumer failed, channel is " + channel + ", msg is " + e);
@@ -190,21 +205,39 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
         channel.setAttribute(KEY_READ_TIMESTAMP, System.currentTimeMillis());
         final ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
         try {
+            /**
+             * 如果是请求，执行请求处理
+             */
             if (message instanceof Request) {
                 // handle request.
                 Request request = (Request) message;
+                /**
+                 * 是否是事件，心跳等
+                 */
                 if (request.isEvent()) {
                     handlerEvent(channel, request);
                 } else {
+                    /**
+                     * 是否是双向通信，如果是双向需要响应
+                     */
                     if (request.isTwoWay()) {
                         handleRequest(exchangeChannel, request);
                     } else {
+                        /**
+                         * 单项通信
+                         */
                         handler.received(exchangeChannel, request.getData());
                     }
                 }
             } else if (message instanceof Response) {
+                /**
+                 * 响应处理
+                 */
                 handleResponse(channel, (Response) message);
             } else if (message instanceof String) {
+                /**
+                 * 如果消息是string，主要用于回声测试
+                 */
                 if (isClientSide(channel)) {
                     Exception e = new Exception("Dubbo client can not supported string message: " + message + " in channel: " + channel + ", url: " + channel.getUrl());
                     logger.error(e.getMessage(), e);

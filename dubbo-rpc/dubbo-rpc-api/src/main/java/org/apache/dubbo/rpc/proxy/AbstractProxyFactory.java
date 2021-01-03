@@ -51,6 +51,9 @@ public abstract class AbstractProxyFactory implements ProxyFactory {
                 }
             }
         }
+        /**
+         * 添加回声测试接口
+         */
         if (interfaces == null) {
             interfaces = new Class<?>[]{invoker.getInterface(), EchoService.class};
         }

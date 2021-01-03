@@ -75,5 +75,9 @@
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo-qos</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-rpc-http</artifactId>
+        </dependency>
     </dependencies>
 </project>

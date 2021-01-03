@@ -456,6 +456,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
             }
         } else {
             //Check whether the mock class is a implementation of the interfaceClass, and if it has a default constructor
+            /**
+             * 检查是不是本地接口的实现
+             */
             MockInvoker.getMockObject(normalizedMock, interfaceClass);
         }
     }
