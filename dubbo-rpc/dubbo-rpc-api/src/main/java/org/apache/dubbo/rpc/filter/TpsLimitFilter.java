@@ -28,6 +28,8 @@ import org.apache.dubbo.rpc.filter.tps.DefaultTPSLimiter;
 import org.apache.dubbo.rpc.filter.tps.TPSLimiter;
 
 /**
+ * TPS控制器
+ *
  * TpsLimitFilter limit the TPS (transaction per second) for all method of a service or a particular method.
  * Service or method url can define <b>tps</b> or <b>tps.interval</b> to control this control.It use {@link DefaultTPSLimiter}
  * as it limit checker. If a provider service method is configured with <b>tps</b>(optionally with <b>tps.interval</b>),then

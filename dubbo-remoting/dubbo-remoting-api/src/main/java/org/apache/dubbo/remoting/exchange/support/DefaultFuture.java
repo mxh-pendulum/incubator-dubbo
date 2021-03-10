@@ -42,6 +42,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
+ * 用于根据请求id找到对应的等待线程
+ *
  * DefaultFuture.
  */
 public class DefaultFuture implements ResponseFuture {

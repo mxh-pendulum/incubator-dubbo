@@ -27,6 +27,8 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.RpcStatus;
 
 /**
+ * 客户端流量控制
+ *
  * ActiveLimitFilter restrict the concurrent client invocation for a service or service's method from client side.
  * To use active limit filter, configured url with <b>actives</b> and provide valid >0 integer value.
  * <pre>
